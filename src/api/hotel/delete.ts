@@ -6,6 +6,7 @@ const router = express.Router();
 
 /**
  * Функция удаления отеля
+ * @param {string} id - Айди отеля
  */
 
 router.delete('/', async (request, response, next) => {

@@ -22,6 +22,9 @@ router.get('/all', async (request, response) => {
 
 /**
  * Функция получения свободных номеров в указанный период
+ * @param {string} hotelId - Айди отеля
+ * @param {string} dateFrom - Начало брони
+ * @param {string} dateTo - Конец брони
  */
 
 router.get('/period', async (request, response) => {

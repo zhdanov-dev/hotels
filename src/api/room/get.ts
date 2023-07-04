@@ -6,6 +6,7 @@ const router = express.Router();
 
 /**
  * Функция получения всех номеров
+ * @param {string} hotelId - Айди отеля
  */
 
 router.get('/', async (request, response, next) => {

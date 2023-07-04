@@ -6,6 +6,7 @@ const router = express.Router();
 
 /**
  * Функция отмены брони
+ * @param {string} id - Айди брони
  */
 
 router.delete('/', async (request, response, next) => {
