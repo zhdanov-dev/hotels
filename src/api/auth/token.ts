@@ -1,5 +1,5 @@
-import jwt from 'jsonwebtoken';
-import Token from '../../models/Token.model';
+import jwt, { JwtPayload } from 'jsonwebtoken';
+import { pool as db } from '../../data/db';
 
 /**
  * Генерация пары токенов
@@ -8,18 +8,18 @@ import Token from '../../models/Token.model';
  * Пара токенов access, refresh
  */
 
-export function genereteToken(id: number, email: string) {
-  try {
-    const accessToken = jwt.sign({ id: id, email }, process.env.SECRET_KEY, {
-      expiresIn: '24h'
-    });
-    const refreshToken = jwt.sign({ id: id, email }, process.env.REFRESH_KEY, {
-      expiresIn: '15d'
-    });
-    return { accessToken, refreshToken };
-  } catch (error) {
-    console.log(error);
-  }
+export function generateToken(id: number, email: string) {
+	try {
+		const accessToken = jwt.sign({ id: id, email }, process.env.SECRET_KEY, {
+			expiresIn: '24h',
+		});
+		const refreshToken = jwt.sign({ id: id, email }, process.env.REFRESH_KEY, {
+			expiresIn: '15d',
+		});
+		return { accessToken, refreshToken };
+	} catch (error) {
+		console.log(error);
+	}
 }
 
 /**
@@ -30,20 +30,30 @@ export function genereteToken(id: number, email: string) {
  */
 
 export async function saveToken(userId: number, refreshToken: string) {
-  try {
-    const tokenData = await Token.findOne({ where: { userId: userId } });
-    if (tokenData) {
-      tokenData.refreshToken = refreshToken;
-      return tokenData.save();
-    }
-    const token = await Token.create({
-      userId: userId,
-      refreshToken: refreshToken
-    });
-    return token;
-  } catch (error) {
-    console.log(error);
-  }
+	try {
+		const tokenData = await db.query(
+			`select *
+       from token
+       where user_id = $1`,
+			[userId]
+		);
+		if (tokenData.rows[0]) {
+			await db.query(
+				`update token
+         set refreshtoken = $1
+         where id = $2`,
+				[refreshToken, userId]
+			);
+		}
+		const token = await db.query(
+			`insert into token (user_id, refreshtoken)
+       values ($1, $2) returning *`,
+			[userId, refreshToken]
+		);
+		return token.rows[0];
+	} catch (error) {
+		console.log(error);
+	}
 }
 
 /**
@@ -53,14 +63,17 @@ export async function saveToken(userId: number, refreshToken: string) {
  */
 
 export async function removeToken(refreshToken: string) {
-  try {
-    const tokenData = await Token.destroy({
-      where: { refreshToken: refreshToken }
-    });
-    return tokenData;
-  } catch (error) {
-    console.log(error);
-  }
+	try {
+		const tokenData = await db.query(
+			`delete
+       from token
+       where refreshtoken = $1`,
+			[refreshToken]
+		);
+		return tokenData.rows[0];
+	} catch (error) {
+		console.log(error);
+	}
 }
 
 /**
@@ -69,14 +82,17 @@ export async function removeToken(refreshToken: string) {
  */
 
 export async function findToken(refreshToken: string) {
-  try {
-    const tokenData = await Token.findOne({
-      where: { refreshToken: refreshToken }
-    });
-    return tokenData;
-  } catch (error) {
-    console.log(error);
-  }
+	try {
+		const tokenData = await db.query(
+			`select *
+       from token
+       where refreshtoken = $1`,
+			[refreshToken]
+		);
+		return tokenData.rows[0];
+	} catch (error) {
+		console.log(error);
+	}
 }
 
 /**
@@ -84,20 +100,18 @@ export async function findToken(refreshToken: string) {
  * @param {string} token - access/refresh токен
  */
 
-export function validateAccess(token: string) {
-  try {
-    const userData = jwt.verify(token, process.env.SECRET_KEY);
-    return userData;
-  } catch (error) {
-    return error;
-  }
+export function validateAccess(token: string): jwt.JwtPayload {
+	try {
+		return <JwtPayload>jwt.verify(token, process.env.SECRET_KEY);
+	} catch (error) {
+		return error;
+	}
 }
 
 export function validateRefresh(token: string) {
-  try {
-    const userData = jwt.verify(token, process.env.REFRESH_KEY);
-    return userData;
-  } catch (error) {
-    return error;
-  }
+	try {
+		return jwt.verify(token, process.env.REFRESH_KEY);
+	} catch (error) {
+		return error;
+	}
 }

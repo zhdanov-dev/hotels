@@ -1,6 +1,6 @@
 import error from '../error/error';
 import express from 'express';
-import Booking from '../../models/Booking.model';
+import { pool as db } from '../../data/db';
 
 const router = express.Router();
 
@@ -10,18 +10,23 @@ const router = express.Router();
  */
 
 router.delete('/', async (request, response, next) => {
-  try {
-    const { id } = request.body;
-    if (!id) {
-      return next(error.badRequest('Неверный параметр id!'));
-    }
-    await Booking.destroy({ where: { id: id } });
-    return response.status(200).json({
-      message: 'Бронь удалена!'
-    });
-  } catch (error) {
-    console.log(error);
-  }
+	try {
+		const { id } = request.body;
+		if (!id) {
+			return next(error.badRequest('Неверный параметр id!'));
+		}
+		await db.query(
+			`delete
+       from booking
+       where id = $1`,
+			[id]
+		);
+		return response.status(200).json({
+			message: 'Бронь удалена!',
+		});
+	} catch (err) {
+		return next(error.internal('Непредвиденная ошибка.'));
+	}
 });
 
 export default router;
